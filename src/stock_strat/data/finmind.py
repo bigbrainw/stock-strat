@@ -1,4 +1,4 @@
-"""FinMind API: Taiwan OHLCV and dividends for 2317 only."""
+"""FinMind API: Taiwan OHLCV and dividends (TaiwanStockPrice, TaiwanStockDividendResult)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import Any
 import pandas as pd
 import requests
 
-from stock_strat.config import DATA_CACHE_DIR, FINMIND_BASE, SYMBOL_TWSE
+from stock_strat.config import DATA_CACHE_DIR, FINMIND_BASE, SYMBOL_TSMC, SYMBOL_TWSE
 
 
 def _get_json(url: str, params: dict[str, Any]) -> dict[str, Any]:
@@ -21,28 +21,12 @@ def _get_json(url: str, params: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def fetch_ohlcv_2317(start_date: str, end_date: str) -> pd.DataFrame:
-    """Fetch daily OHLCV for 2317 from FinMind v4."""
-    params = {
-        "dataset": "TaiwanStockPrice",
-        "data_id": SYMBOL_TWSE,
-        "start_date": start_date,
-        "end_date": end_date,
-    }
-    raw = _get_json(FINMIND_BASE, params)
-    rows = raw.get("data") or []
+def _ohlcv_frame_from_rows(rows: list[dict[str, Any]]) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame()
     df = pd.DataFrame(rows)
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date").sort_index()
-    rename = {
-        "open": "open",
-        "max": "high",
-        "min": "low",
-        "close": "close",
-        "Trading_Volume": "volume",
-    }
     out = pd.DataFrame(
         {
             "open": df["open"].astype(float),
@@ -56,11 +40,33 @@ def fetch_ohlcv_2317(start_date: str, end_date: str) -> pd.DataFrame:
     return out
 
 
-def fetch_dividends_2317(start_date: str, end_date: str) -> pd.DataFrame:
-    """Ex-dividend reference prices (TaiwanStockDividendResult)."""
+def fetch_ohlcv_twse(stock_id: str, start_date: str, end_date: str) -> pd.DataFrame:
+    """Fetch daily OHLCV for a TWSE / Taiwan listing via FinMind v4 ``TaiwanStockPrice``."""
+    params = {
+        "dataset": "TaiwanStockPrice",
+        "data_id": stock_id,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    raw = _get_json(FINMIND_BASE, params)
+    return _ohlcv_frame_from_rows(raw.get("data") or [])
+
+
+def fetch_ohlcv_2317(start_date: str, end_date: str) -> pd.DataFrame:
+    """Fetch daily OHLCV for 2317 (Hon Hai)."""
+    return fetch_ohlcv_twse(SYMBOL_TWSE, start_date, end_date)
+
+
+def fetch_ohlcv_2330(start_date: str, end_date: str) -> pd.DataFrame:
+    """Fetch daily OHLCV for 2330 (TSMC / 台積電)."""
+    return fetch_ohlcv_twse(SYMBOL_TSMC, start_date, end_date)
+
+
+def fetch_dividends_twse(stock_id: str, start_date: str, end_date: str) -> pd.DataFrame:
+    """Ex-dividend reference prices (``TaiwanStockDividendResult``)."""
     params = {
         "dataset": "TaiwanStockDividendResult",
-        "data_id": SYMBOL_TWSE,
+        "data_id": stock_id,
         "start_date": start_date,
         "end_date": end_date,
     }
@@ -83,28 +89,37 @@ def fetch_dividends_2317(start_date: str, end_date: str) -> pd.DataFrame:
     return df.set_index("date").sort_index()
 
 
-def _cache_path(start_date: str, end_date: str) -> Path:
-    return DATA_CACHE_DIR / f"ohlcv_{SYMBOL_TWSE}_{start_date}_{end_date}.parquet"
+def fetch_dividends_2317(start_date: str, end_date: str) -> pd.DataFrame:
+    return fetch_dividends_twse(SYMBOL_TWSE, start_date, end_date)
+
+
+def fetch_dividends_2330(start_date: str, end_date: str) -> pd.DataFrame:
+    return fetch_dividends_twse(SYMBOL_TSMC, start_date, end_date)
+
+
+def _cache_path(stock_id: str, start_date: str, end_date: str) -> Path:
+    return DATA_CACHE_DIR / f"ohlcv_{stock_id}_{start_date}_{end_date}.parquet"
 
 
 def load_or_fetch_ohlcv(
     start_date: str,
     end_date: str,
     *,
+    stock_id: str = SYMBOL_TWSE,
     refresh: bool = False,
 ) -> pd.DataFrame:
-    """Load cached Parquet or download from FinMind."""
+    """Load cached Parquet or download from FinMind ``TaiwanStockPrice`` (e.g. ``2317``, ``2330``)."""
     DATA_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    path = _cache_path(start_date, end_date)
+    path = _cache_path(stock_id, start_date, end_date)
     if path.exists() and not refresh:
         return pd.read_parquet(path)
-    df = fetch_ohlcv_2317(start_date, end_date)
+    df = fetch_ohlcv_twse(stock_id, start_date, end_date)
     if df.empty:
-        raise RuntimeError("No OHLCV rows returned from FinMind")
+        raise RuntimeError(f"No OHLCV rows returned from FinMind for {stock_id}")
     df.to_parquet(path)
     meta = {
         "source": "FinMind TaiwanStockPrice",
-        "symbol": SYMBOL_TWSE,
+        "symbol": stock_id,
         "start": start_date,
         "end": end_date,
     }

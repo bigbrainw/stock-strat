@@ -1,4 +1,4 @@
-"""Optional Yahoo Finance cross-check for 2317.TW."""
+"""Optional Yahoo Finance cross-check (e.g. 2317.TW, 2330.TW)."""
 
 from __future__ import annotations
 
@@ -8,9 +8,14 @@ import yfinance as yf
 from stock_strat.config import SYMBOL_YAHOO
 
 
-def fetch_yahoo_ohlcv(start_date: str, end_date: str) -> pd.DataFrame:
+def fetch_yahoo_ohlcv(
+    start_date: str,
+    end_date: str,
+    *,
+    symbol_yahoo: str = SYMBOL_YAHOO,
+) -> pd.DataFrame:
     """Download OHLCV + Adj Close for comparison (Yahoo end date is exclusive in some versions)."""
-    t = yf.Ticker(SYMBOL_YAHOO)
+    t = yf.Ticker(symbol_yahoo)
     df = t.history(start=start_date, end=end_date, auto_adjust=False, actions=True)
     if df.empty:
         return pd.DataFrame()

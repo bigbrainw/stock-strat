@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from stock_strat.data.finmind import fetch_dividends_2317
+from stock_strat.config import SYMBOL_TWSE
+from stock_strat.data.finmind import fetch_dividends_twse
 
 
 def _backward_dividend_factors(
@@ -32,6 +33,7 @@ def clean_ohlcv(
     start_date: str,
     end_date: str,
     *,
+    stock_id: str = SYMBOL_TWSE,
     dividends: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
     """
@@ -46,7 +48,7 @@ def clean_ohlcv(
     df = df[~df.index.duplicated(keep="last")]
     df = df[df["close"].notna()]
 
-    div = dividends if dividends is not None else fetch_dividends_2317(start_date, end_date)
+    div = dividends if dividends is not None else fetch_dividends_twse(stock_id, start_date, end_date)
     mult = _backward_dividend_factors(df.index, div)
     for col in ("open", "high", "low", "close"):
         if col in df.columns:
