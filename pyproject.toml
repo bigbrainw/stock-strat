@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stock-strat"
+version = "0.1.0"
+description = "Taiwan 2317 daily backtesting (Hon Hai)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "pandas-ta>=0.3.14b",
+    "pyarrow>=14.0",
+    "requests>=2.31",
+    "vectorbt>=0.26",
+    "yfinance>=0.2.40",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "ruff>=0.4"]
+
+[project.scripts]
+stock-strat = "stock_strat.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stock_strat"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
