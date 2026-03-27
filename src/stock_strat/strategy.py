@@ -1,13 +1,12 @@
 """
-RSI strategy for 2317: explicit signal columns.
+RSI mean-reversion with optional regime gates.
 
 Signal evaluated on bar close. Execution is applied on next bar open in `backtest` (shift).
 
-Rules (educational):
-- Long entry when RSI crosses into oversold: RSI < entry and previous RSI >= entry.
-- Long exit when RSI crosses into exit zone: RSI > exit and previous RSI <= exit.
-
-Alternatively, first bar where RSI < entry after being above counts as entry — we use cross-into-zone for fewer duplicate orders.
+Rules:
+- Long entry when RSI crosses into oversold (cross below entry threshold).
+- Long exit when RSI crosses above exit threshold.
+- Optional: only allow entries when `above_sma_trend` and/or low vol (see params).
 """
 
 from __future__ import annotations
@@ -22,8 +21,13 @@ def generate_signals(
     *,
     rsi_entry: float = RSI_ENTRY,
     rsi_exit: float = RSI_EXIT,
+    regime_above_sma: int | None = None,
+    regime_require_index_above_sma: bool = False,
+    vol_percentile_max: float | None = None,
+    vol_lookback: int = 20,
+    vol_rank_window: int = 252,
 ) -> pd.DataFrame:
-    """Add signal_* columns for debugging and backtests."""
+    """Add signal_* columns. Regime gates apply only to entries, not exits."""
     out = df.copy()
     rsi = out["rsi"].astype(float)
     below = rsi < rsi_entry
@@ -31,13 +35,22 @@ def generate_signals(
     prev_below = below.shift(1).fillna(False)
     prev_above_exit = above_exit.shift(1).fillna(False)
 
-    # Enter when we cross into oversold band
-    out["signal_entry_cross"] = below & ~prev_below
+    entry_raw = below & ~prev_below
+    exit_raw = above_exit & ~prev_above_exit
 
-    # Exit when we cross above exit threshold
-    out["signal_exit_cross"] = above_exit & ~prev_above_exit
+    allow = pd.Series(True, index=out.index)
+    if regime_above_sma is not None and "above_sma_trend" in out.columns:
+        allow = allow & out["above_sma_trend"].fillna(False)
+    if vol_percentile_max is not None and "realized_vol_ann" in out.columns:
+        rv = out["realized_vol_ann"].astype(float)
+        thr = rv.rolling(vol_rank_window, min_periods=20).quantile(vol_percentile_max)
+        allow = allow & (rv <= thr)
+    if regime_require_index_above_sma and "index_above_sma" in out.columns:
+        allow = allow & out["index_above_sma"].fillna(False)
 
-    # Raw zones (for logging)
+    out["signal_entry_cross"] = entry_raw & allow
+    out["signal_exit_cross"] = exit_raw
+
     out["signal_in_oversold"] = below
     out["signal_above_exit_zone"] = above_exit
 

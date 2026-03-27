@@ -43,3 +43,11 @@ RSI_ENTRY = 30.0
 RSI_EXIT = 50.0
 
 FINMIND_BASE = "https://api.finmindtrade.com/api/v4/data"
+
+# Execution extras (optional in backtest)
+MIN_COMMISSION_TWD = 1.0  # typical retail floor; 0 to disable
+DEFAULT_SLIPPAGE_PCT = 0.0  # effective price = open * (1 +/- slippage) buy/sell
+DEFAULT_EQUITY_FRACTION = 1.0  # fraction of cash to deploy on full entry
+
+# Regime defaults (optional)
+REGIME_SMA_DAYS = 200

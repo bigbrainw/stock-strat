@@ -1,6 +1,8 @@
 # stock-strat — Taiwan daily backtesting (default 2317 鴻海)
 
-Educational backtest pipeline focused on TWSE listings. Defaults: **2317** / Yahoo [**2317.TW**](https://tw.stock.yahoo.com/quote/2317.TW). **TSMC** is supported as **2330** / [**2330.TW**](https://tw.stock.yahoo.com/quote/2330.TW) via the same FinMind `TaiwanStockPrice` flow.
+Educational backtest pipeline focused on TWSE listings.
+
+**Strategy and repository layout:** [docs/STRATEGY_AND_STRUCTURE.md](docs/STRATEGY_AND_STRUCTURE.md). Defaults: **2317** / Yahoo [**2317.TW**](https://tw.stock.yahoo.com/quote/2317.TW). **TSMC** is supported as **2330** / [**2330.TW**](https://tw.stock.yahoo.com/quote/2330.TW) via the same FinMind `TaiwanStockPrice` flow.
 
 ## Data assumptions
 
@@ -21,6 +23,8 @@ pip install -e ".[dev]"
 ```
 
 ## Run
+
+Every `run` prints strategy metrics plus **buy-and-hold on the same OHLCV window** (`buy_and_hold`) and **excess return vs buy-and-hold** (`excess_total_return_vs_buy_hold`, `excess_cagr_vs_buy_hold`). Buy-and-hold is: full cash at the **first bar’s open**, hold through **last close** (no fees), so it is a simple path benchmark, not a broker-accurate TW order.
 
 ```bash
 stock-strat run --start 2015-01-01 --end 2024-12-31
